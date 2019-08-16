@@ -48,16 +48,16 @@ public class DispatcherServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         try {
-            String servletPath = req.getServletPath();
+            String requestUri = req.getRequestURI();
             PrintWriter writer = resp.getWriter();
-            if (!urlMappings.containsKey(servletPath)) {
+            if (!urlMappings.containsKey(requestUri)) {
                 writer.write("404");
                 writer.flush();
                 writer.close();
                 return;
             }
 
-            HandlerMapping handlerMapping = urlMappings.get(servletPath);
+            HandlerMapping handlerMapping = urlMappings.get(requestUri);
             Object o = components.get(handlerMapping.getClassName());
             Method method = handlerMapping.getMethod();
             if (method.getParameterCount() == 0) {
@@ -66,25 +66,13 @@ public class DispatcherServlet extends HttpServlet {
                 return;
             }
 
-            String queryString = req.getQueryString();
-            if (queryString == null  || queryString.length() == 0) {
-                throw new IllegalArgumentException("参数不足");
-            }
-
-            String[] paramsPair = queryString.split("&");
-            Map<String, String> paramsMap = new HashMap<>(paramsPair.length);
-            for (String pair : paramsPair) {
-                String[] part = pair.split("=");
-                if (pair.length() < 2) {
-                    continue;
-                }
-                paramsMap.put(part[0], part[1]);
-            }
-
             Parameter[] params = method.getParameters();
             Object[] paramObjs = new Object[params.length];
+            Map parameterMap = req.getParameterMap();
             for (int i = 0; i < params.length; i++) {
-                paramObjs[i] = paramsMap.getOrDefault(params[i].getName(), null);
+                //IDEA 需要配置-parameters在Preferences->Build,Execution,Deployment->Compiler->java Compiler
+                //否则获取不到参数名。或者适用cglib或者asm等第三方jar包来获取
+                paramObjs[i] = parameterMap.getOrDefault(params[i].getName(), null);
             }
 
             Object result = method.invoke(o, paramObjs);
@@ -157,7 +145,15 @@ public class DispatcherServlet extends HttpServlet {
                     Class<? extends Annotation> annotationType = annotation.annotationType();
                     if (annotationType.isAnnotationPresent(Component.class)) {
                         Object o = clazz.newInstance();
-                        components.put(className, o);
+                        //如果存在接口则用接口类名作为key
+                        Class<?>[] interfaces = clazz.getInterfaces();
+                        if (interfaces.length > 0) {
+                            for (Class<?> anInterface : interfaces) {
+                                components.put(anInterface.getName(), o);
+                            }
+                        } else {
+                            components.put(className, o);
+                        }
 
                         //这里就不用annotationType.isAnnotationPresent了
                         if (annotationType == Controller.class) {
