@@ -1,6 +1,7 @@
 package com.lqb.demo.service.impl;
 
 import com.lqb.demo.service.IHelloService;
+import com.lqb.mvcframework.annotation.RequestParam;
 import com.lqb.mvcframework.annotation.Service;
 
 /**
@@ -10,8 +11,10 @@ import com.lqb.mvcframework.annotation.Service;
  **/
 @Service
 public class HelloServiceImpl implements IHelloService {
+
     @Override
-    public String sayHello(String name) {
+    public String sayHello(@RequestParam("name") String name) {
         return "hello " + name;
     }
+
 }

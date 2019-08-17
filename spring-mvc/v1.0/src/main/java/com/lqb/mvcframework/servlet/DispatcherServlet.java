@@ -1,9 +1,6 @@
 package com.lqb.mvcframework.servlet;
 
-import com.lqb.mvcframework.annotation.Autowired;
-import com.lqb.mvcframework.annotation.Component;
-import com.lqb.mvcframework.annotation.Controller;
-import com.lqb.mvcframework.annotation.RequestMapping;
+import com.lqb.mvcframework.annotation.*;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -35,8 +32,6 @@ public class DispatcherServlet extends HttpServlet {
 
     private Map<String, Object> handlerMappings = new HashMap<>();
 
-    // private Map<String, HandlerMapping> urlMappings = new HashMap<>();
-
     private String scanPackage;
 
     @Override
@@ -45,7 +40,7 @@ public class DispatcherServlet extends HttpServlet {
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         try {
             String requestUri = req.getRequestURI();
             PrintWriter writer = resp.getWriter();
@@ -68,14 +63,32 @@ public class DispatcherServlet extends HttpServlet {
             Object[] paramObjs = new Object[params.length];
             Map parameterMap = req.getParameterMap();
 
-            //下面这种获取方法入参变量名无效
-            // for (int i = 0; i < params.length; i++) {
-                //IDEA 需要配置-parameters在Preferences->Build,Execution,Deployment->Compiler->java Compiler
-                //否则获取不到参数名。或者适用cglib或者asm等第三方jar包来获取
-                // paramObjs[i] = parameterMap.getOrDefault(params[i].getName(), null);
-            // }
+            for (int i = 0; i < params.length; i++) {
+                RequestParam requestParam = params[i].getAnnotation(RequestParam.class);
+                Class<?> type = params[i].getType();
+                if (requestParam != null) {
+                    if (!parameterMap.containsKey(requestParam.value())) {
+                        continue;
+                    }
+                    String rawTypeParam = ((String[]) parameterMap.get(requestParam.value()))[0];
+                    Object trueTypeParam;
 
-            paramObjs[0] = ((String[])parameterMap.get("name"))[0];
+                    if (type == Integer.class) {
+                        trueTypeParam = Integer.valueOf(rawTypeParam);
+                    } else if (type == Boolean.class) {
+                        trueTypeParam = Boolean.valueOf(rawTypeParam);
+                    } else if (type == Double.class) {
+                        trueTypeParam = Double.valueOf(rawTypeParam);
+                    } else {
+                        trueTypeParam = rawTypeParam;
+                    }
+                    paramObjs[i] = trueTypeParam;
+                } else if (type == HttpServletRequest.class) {
+                    paramObjs[i] = req;
+                } else if (type == HttpServletResponse.class) {
+                    paramObjs[i] = resp;
+                }
+            }
 
             Object result = handler.invoke(o, paramObjs);
             renderResponse(resp, writer, result);

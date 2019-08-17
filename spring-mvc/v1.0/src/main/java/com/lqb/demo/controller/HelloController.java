@@ -18,8 +18,8 @@ public class HelloController {
     private IHelloService helloService;
 
     @RequestMapping("/hello")
-    public String hello(@RequestParam("name") String name) {
-        return helloService.sayHello(name);
+    public String hello(@RequestParam("name") String name, @RequestParam("age") Integer age) {
+        return helloService.sayHello(name) + ". I'm " + age;
     }
 
 }
