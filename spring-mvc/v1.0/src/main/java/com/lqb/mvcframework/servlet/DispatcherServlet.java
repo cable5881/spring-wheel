@@ -7,7 +7,6 @@ import com.lqb.mvcframework.annotation.RequestMapping;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
-import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -34,9 +33,9 @@ public class DispatcherServlet extends HttpServlet {
 
     private Properties configs;
 
-    private Map<String, Object> components = new HashMap<>();
+    private Map<String, Object> handlerMappings = new HashMap<>();
 
-    private Map<String, HandlerMapping> urlMappings = new HashMap<>();
+    // private Map<String, HandlerMapping> urlMappings = new HashMap<>();
 
     private String scanPackage;
 
@@ -50,32 +49,35 @@ public class DispatcherServlet extends HttpServlet {
         try {
             String requestUri = req.getRequestURI();
             PrintWriter writer = resp.getWriter();
-            if (!urlMappings.containsKey(requestUri)) {
+            if (!handlerMappings.containsKey(requestUri)) {
                 writer.write("404");
                 writer.flush();
                 writer.close();
                 return;
             }
 
-            HandlerMapping handlerMapping = urlMappings.get(requestUri);
-            Object o = components.get(handlerMapping.getClassName());
-            Method method = handlerMapping.getMethod();
-            if (method.getParameterCount() == 0) {
-                Object result = method.invoke(o, (Object) null);
+            Method handler = (Method) handlerMappings.get(requestUri);
+            Object o = handlerMappings.get(handler.getDeclaringClass().getName());
+            if (handler.getParameterCount() == 0) {
+                Object result = handler.invoke(o, (Object) null);
                 renderResponse(resp, writer, result);
                 return;
             }
 
-            Parameter[] params = method.getParameters();
+            Parameter[] params = handler.getParameters();
             Object[] paramObjs = new Object[params.length];
             Map parameterMap = req.getParameterMap();
-            for (int i = 0; i < params.length; i++) {
+
+            //下面这种获取方法入参变量名无效
+            // for (int i = 0; i < params.length; i++) {
                 //IDEA 需要配置-parameters在Preferences->Build,Execution,Deployment->Compiler->java Compiler
                 //否则获取不到参数名。或者适用cglib或者asm等第三方jar包来获取
-                paramObjs[i] = parameterMap.getOrDefault(params[i].getName(), null);
-            }
+                // paramObjs[i] = parameterMap.getOrDefault(params[i].getName(), null);
+            // }
 
-            Object result = method.invoke(o, paramObjs);
+            paramObjs[0] = ((String[])parameterMap.get("name"))[0];
+
+            Object result = handler.invoke(o, paramObjs);
             renderResponse(resp, writer, result);
         } catch (IllegalAccessException e) {
             e.printStackTrace();
@@ -91,9 +93,8 @@ public class DispatcherServlet extends HttpServlet {
             return;
         }
 
-        ServletOutputStream outputStream = resp.getOutputStream();
         if (result instanceof String) {
-            outputStream.write(((String)result).getBytes());
+            writer.write((String) result);
             writer.flush();
             writer.close();
             return;
@@ -149,10 +150,10 @@ public class DispatcherServlet extends HttpServlet {
                         Class<?>[] interfaces = clazz.getInterfaces();
                         if (interfaces.length > 0) {
                             for (Class<?> anInterface : interfaces) {
-                                components.put(anInterface.getName(), o);
+                                handlerMappings.put(anInterface.getName(), o);
                             }
                         } else {
-                            components.put(className, o);
+                            handlerMappings.put(className, o);
                         }
 
                         //这里就不用annotationType.isAnnotationPresent了
@@ -173,7 +174,7 @@ public class DispatcherServlet extends HttpServlet {
     }
 
     private void initClassProperties() {
-        for (Object o : components.values()) {
+        for (Object o : handlerMappings.values()) {
             //getFields()无法获取到private域的字段
             Field[] fields = o.getClass().getDeclaredFields();
             for (Field field : fields) {
@@ -184,12 +185,12 @@ public class DispatcherServlet extends HttpServlet {
                 try {
                     String fieldType = field.getType().getName();
 
-                    if (!components.containsKey(fieldType)) {
+                    if (!handlerMappings.containsKey(fieldType)) {
                         continue;
                     }
 
                     field.setAccessible(true);
-                    field.set(o, components.get(fieldType));
+                    field.set(o, handlerMappings.get(fieldType));
                 } catch (IllegalAccessException e) {
                     e.printStackTrace();
                 }
@@ -210,10 +211,7 @@ public class DispatcherServlet extends HttpServlet {
                 continue;
             }
 
-            HandlerMapping handlerMapping = new HandlerMapping();
-            handlerMapping.setClassName(clazz.getCanonicalName());
-            handlerMapping.setMethod(method);
-            urlMappings.put(url, handlerMapping);
+            handlerMappings.put(url, method);
         }
     }
 
