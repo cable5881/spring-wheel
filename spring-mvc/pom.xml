@@ -18,6 +18,7 @@
     <modules>
         <module>v1.0</module>
         <module>v2.0</module>
+        <module>v3.0</module>
     </modules>
 
 
