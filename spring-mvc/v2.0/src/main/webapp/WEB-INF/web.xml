@@ -10,7 +10,7 @@
 
     <servlet>
         <servlet-name>mymvc</servlet-name>
-        <servlet-class>com.lqb.spring.v3.webmvc.servlet.DispatcherServlet</servlet-class>
+        <servlet-class>com.lqb.spring.v2.webmvc.servlet.DispatcherServlet</servlet-class>
         <init-param>
             <param-name>contextConfigLocation</param-name>
             <param-value>application.properties</param-value>

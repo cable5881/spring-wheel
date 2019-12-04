@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Properties;
 
 public class DefaultApplicationContext implements ConfigurableApplicationContext,
-        BeanDefinitionRegistry, AnnotationConfigRegistry{
+        BeanDefinitionRegistry, AnnotationConfigRegistry {
 
     private final AnnotatedBeanDefinitionReader reader;
 

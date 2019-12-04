@@ -1,0 +1,10 @@
+package com.lqb.app.v2.service;
+
+/**
+ * @author liqibo
+ * @description TODO
+ * @date 2019/12/3 15:59
+ **/
+public interface IHelloService {
+    String hello();
+}
