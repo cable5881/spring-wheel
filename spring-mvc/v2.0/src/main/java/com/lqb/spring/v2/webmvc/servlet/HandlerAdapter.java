@@ -15,6 +15,7 @@ import java.util.Map;
  * @date 2019/12/3 16:52
  **/
 public class HandlerAdapter {
+
     public boolean supports(Object handler) {
         return (handler instanceof HandlerMapping);
     }

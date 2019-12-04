@@ -95,8 +95,6 @@ public class DispatcherServlet extends HttpServlet {
             view.render(mv.getModel(), req, resp);
             return;
         }
-
-
     }
 
     private HandlerMapping getHandler(HttpServletRequest req) throws Exception {

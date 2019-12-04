@@ -19,10 +19,10 @@ public class DefaultApplicationContext implements BeanFactory {
 
     protected final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(256);
 
-    //单例的IOC容器缓存
+    /**单例的IOC容器缓存*/
     private Map<String, Object> factoryBeanObjectCache = new ConcurrentHashMap<>();
 
-    //通用的IOC容器
+    /**通用的IOC容器*/
     private Map<String, BeanWrapper> factoryBeanInstanceCache = new ConcurrentHashMap<>();
 
     private String configLocations;
@@ -48,13 +48,13 @@ public class DefaultApplicationContext implements BeanFactory {
 
         //3、注册，把配置信息放到容器里面(伪IOC容器)
         doRegisterBeanDefinition(beanDefinitions);
+        //到这里为止，容器初始化完毕
 
-        //4、把不是延时加载的类，有提前初始化
-        doAutowrited();
+        //4、把不是延时加载的类，提前初始化
+        doAutowired();
     }
 
-    //只处理非延时加载的情况
-    private void doAutowrited() {
+    private void doAutowired() {
         for (Map.Entry<String, BeanDefinition> beanDefinitionEntry : beanDefinitionMap.entrySet()) {
             String beanName = beanDefinitionEntry.getKey();
             if (!beanDefinitionEntry.getValue().isLazyInit()) {
@@ -68,23 +68,25 @@ public class DefaultApplicationContext implements BeanFactory {
     }
 
     private void doRegisterBeanDefinition(List<BeanDefinition> beanDefinitions) throws Exception {
-
         for (BeanDefinition beanDefinition : beanDefinitions) {
             if (beanDefinitionMap.containsKey(beanDefinition.getFactoryBeanName())) {
-                throw new Exception("The “" + beanDefinition.getFactoryBeanName() + "” is exists!!");
+                throw new Exception("The \"" + beanDefinition.getFactoryBeanName() + "\" is exists!!");
             }
             beanDefinitionMap.put(beanDefinition.getFactoryBeanName(), beanDefinition);
         }
-        //到这里为止，容器初始化完毕
     }
 
     @Override
     public Object getBean(String beanName) throws Exception {
-        BeanDefinition beanDefinition = this.beanDefinitionMap.get(beanName);
-        Object instance = null;
+        Object instance = getSingleton(beanName);
 
-        //这个逻辑还不严谨，自己可以去参考Spring源码
-        //工厂模式 + 策略模式
+        //如果是单例且存在则直接返回
+        if (instance != null) {
+            return instance;
+        }
+
+        BeanDefinition beanDefinition = this.beanDefinitionMap.get(beanName);
+
         BeanPostProcessor postProcessor = new BeanPostProcessor();
 
         postProcessor.postProcessBeforeInitialization(instance, beanName);
@@ -100,11 +102,16 @@ public class DefaultApplicationContext implements BeanFactory {
 
         postProcessor.postProcessAfterInitialization(instance, beanName);
 
-//        //3、注入
+        //3、注入
         populateBean(beanName, new BeanDefinition(), beanWrapper);
 
 
         return this.factoryBeanInstanceCache.get(beanName).getWrappedInstance();
+    }
+
+    private Object getSingleton(String beanName) {
+        BeanWrapper beanWrapper = factoryBeanInstanceCache.get(beanName);
+        return beanWrapper == null ? null : beanWrapper.getWrappedInstance();
     }
 
     private void populateBean(String beanName, BeanDefinition beanDefinition, BeanWrapper gpBeanWrapper) {
