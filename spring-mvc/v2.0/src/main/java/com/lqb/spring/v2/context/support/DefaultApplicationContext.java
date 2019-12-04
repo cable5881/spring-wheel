@@ -17,12 +17,16 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultApplicationContext implements BeanFactory {
 
-    protected final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(256);
+    protected final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
 
-    /**单例的IOC容器缓存*/
+    /**
+     * 单例的IOC容器缓存
+     */
     private Map<String, Object> factoryBeanObjectCache = new ConcurrentHashMap<>();
 
-    /**通用的IOC容器*/
+    /**
+     * 通用的IOC容器
+     */
     private Map<String, BeanWrapper> factoryBeanInstanceCache = new ConcurrentHashMap<>();
 
     private String configLocations;
@@ -47,8 +51,8 @@ public class DefaultApplicationContext implements BeanFactory {
         List<BeanDefinition> beanDefinitions = reader.loadBeanDefinitions();
 
         //3、注册，把配置信息放到容器里面(伪IOC容器)
-        doRegisterBeanDefinition(beanDefinitions);
         //到这里为止，容器初始化完毕
+        doRegisterBeanDefinition(beanDefinitions);
 
         //4、把不是延时加载的类，提前初始化
         doAutowired();
@@ -178,10 +182,10 @@ public class DefaultApplicationContext implements BeanFactory {
     }
 
     public String[] getBeanDefinitionNames() {
-        return this.beanDefinitionMap.keySet().toArray(new  String[this.beanDefinitionMap.size()]);
+        return this.beanDefinitionMap.keySet().toArray(new String[this.beanDefinitionMap.size()]);
     }
 
-    public Properties getConfig(){
+    public Properties getConfig() {
         return this.reader.getConfig();
     }
 }

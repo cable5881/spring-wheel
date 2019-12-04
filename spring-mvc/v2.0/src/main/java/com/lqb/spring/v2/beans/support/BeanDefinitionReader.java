@@ -1,10 +1,12 @@
 package com.lqb.spring.v2.beans.support;
 
+import com.lqb.spring.v2.annotation.Component;
 import com.lqb.spring.v2.beans.config.BeanDefinition;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -73,20 +75,30 @@ public class BeanDefinitionReader {
                     continue;
                 }
 
-                //beanName有三种情况:
-                //1、默认是类名首字母小写
-                //2、自定义名字
-                //3、接口注入
-                result.add(doCreateBeanDefinition(toLowerFirstCase(beanClass.getSimpleName()), beanClass.getName()));
-
-                Class<?>[] interfaces = beanClass.getInterfaces();
-                for (Class<?> i : interfaces) {
-                    //如果是多个实现类，只能覆盖
-                    //为什么？因为Spring没那么智能，就是这么傻
-                    //这个时候，可以自定义名字
-                    result.add(doCreateBeanDefinition(i.getName(), beanClass.getName()));
+                Annotation[] annotations = beanClass.getAnnotations();
+                if (annotations.length == 0) {
+                    continue;
                 }
 
+                for (Annotation annotation : annotations) {
+                    Class<? extends Annotation> annotationType = annotation.annotationType();
+                    if (annotationType.isAnnotationPresent(Component.class)) {
+                        //beanName有三种情况:
+                        //1、默认是类名首字母小写
+                        //2、自定义名字
+                        //3、接口注入
+                        result.add(doCreateBeanDefinition(toLowerFirstCase(beanClass.getSimpleName()), beanClass.getName()));
+
+                        Class<?>[] interfaces = beanClass.getInterfaces();
+                        for (Class<?> i : interfaces) {
+                            //如果是多个实现类，只能覆盖
+                            //为什么？因为Spring没那么智能，就是这么傻
+                            //这个时候，可以自定义名字
+                            result.add(doCreateBeanDefinition(i.getName(), beanClass.getName()));
+                        }
+                        break;
+                    }
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
