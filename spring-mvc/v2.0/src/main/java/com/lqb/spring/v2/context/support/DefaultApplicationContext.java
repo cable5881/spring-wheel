@@ -3,6 +3,11 @@ package com.lqb.spring.v2.context.support;
 import com.lqb.spring.v2.annotation.Autowired;
 import com.lqb.spring.v2.annotation.Controller;
 import com.lqb.spring.v2.annotation.Service;
+import com.lqb.spring.v2.aop.AopProxy;
+import com.lqb.spring.v2.aop.CglibAopProxy;
+import com.lqb.spring.v2.aop.JdkDynamicAopProxy;
+import com.lqb.spring.v2.aop.config.AopConfig;
+import com.lqb.spring.v2.aop.support.AdvisedSupport;
 import com.lqb.spring.v2.beans.BeanWrapper;
 import com.lqb.spring.v2.beans.config.BeanDefinition;
 import com.lqb.spring.v2.beans.config.BeanPostProcessor;
@@ -106,7 +111,7 @@ public class DefaultApplicationContext implements BeanFactory {
 
         postProcessor.postProcessAfterInitialization(instance, beanName);
 
-        //3、注入
+        //注入
         populateBean(beanName, new BeanDefinition(), beanWrapper);
 
 
@@ -154,9 +159,9 @@ public class DefaultApplicationContext implements BeanFactory {
         }
     }
 
-    private Object instantiateBean(String beanName, BeanDefinition gpBeanDefinition) {
+    private Object instantiateBean(String beanName, BeanDefinition beanDefinition) {
         //1、拿到要实例化的对象的类名
-        String className = gpBeanDefinition.getBeanClassName();
+        String className = beanDefinition.getBeanClassName();
 
         //2、反射实例化，得到一个对象
         Object instance = null;
@@ -166,14 +171,43 @@ public class DefaultApplicationContext implements BeanFactory {
             } else {
                 Class<?> clazz = Class.forName(className);
                 instance = clazz.newInstance();
+
+                AdvisedSupport config = instantionAopConfig(beanDefinition);
+                config.setTargetClass(clazz);
+                config.setTarget(instance);
+
+                //符合PointCut的规则的话，将创建代理对象
+                if(config.pointCutMatch()) {
+                    instance = createProxy(config).getProxy();
+                }
+
                 this.factoryBeanObjectCache.put(className, instance);
-                this.factoryBeanObjectCache.put(gpBeanDefinition.getFactoryBeanName(), instance);
+                this.factoryBeanObjectCache.put(beanDefinition.getFactoryBeanName(), instance);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
 
         return instance;
+    }
+
+    private AopProxy createProxy(AdvisedSupport config) {
+        Class targetClass = config.getTargetClass();
+        if(targetClass.getInterfaces().length > 0){
+            return new JdkDynamicAopProxy(config);
+        }
+        return new CglibAopProxy(config);
+    }
+
+    private AdvisedSupport instantionAopConfig(BeanDefinition beanDefinition) {
+        AopConfig config = new AopConfig();
+        config.setPointCut(this.reader.getConfig().getProperty("pointCut"));
+        config.setAspectClass(this.reader.getConfig().getProperty("aspectClass"));
+        config.setAspectBefore(this.reader.getConfig().getProperty("aspectBefore"));
+        config.setAspectAfter(this.reader.getConfig().getProperty("aspectAfter"));
+        config.setAspectAfterThrow(this.reader.getConfig().getProperty("aspectAfterThrow"));
+        config.setAspectAfterThrowingName(this.reader.getConfig().getProperty("aspectAfterThrowingName"));
+        return new AdvisedSupport(config);
     }
 
     @Override

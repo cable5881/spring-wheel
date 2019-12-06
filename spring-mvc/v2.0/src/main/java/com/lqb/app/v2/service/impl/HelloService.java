@@ -1,5 +1,6 @@
-package com.lqb.app.v2.service;
+package com.lqb.app.v2.service.impl;
 
+import com.lqb.app.v2.service.IHelloService;
 import com.lqb.spring.v2.annotation.Service;
 
 /**
@@ -8,7 +9,7 @@ import com.lqb.spring.v2.annotation.Service;
  * @date 2019/12/3 15:59
  **/
 @Service
-public class HelloServiceImpl implements IHelloService {
+public class HelloService implements IHelloService {
 
     @Override
     public String hello() {

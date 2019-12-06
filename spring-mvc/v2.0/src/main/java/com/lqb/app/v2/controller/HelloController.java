@@ -6,7 +6,6 @@ import com.lqb.spring.v2.annotation.Controller;
 import com.lqb.spring.v2.annotation.RequestMapping;
 import com.lqb.spring.v2.webmvc.servlet.ModelAndView;
 
-import java.util.Date;
 import java.util.HashMap;
 
 /**
@@ -22,11 +21,11 @@ public class HelloController {
 
     @RequestMapping("/hello")
     public ModelAndView hello() {
-        String res = helloService.hello();
         HashMap<String, Object> model = new HashMap<>();
-        model.put("teacher", res);
-        model.put("data", new Date());
-        return new ModelAndView("first", model);
+        String res = helloService.hello();
+        model.put("data1", res);
+        model.put("data2", "world");
+        return new ModelAndView("test", model);
     }
 
 
