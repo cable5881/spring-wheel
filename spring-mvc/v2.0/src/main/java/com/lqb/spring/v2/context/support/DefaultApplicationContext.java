@@ -12,7 +12,7 @@ import com.lqb.spring.v2.beans.BeanWrapper;
 import com.lqb.spring.v2.beans.config.BeanDefinition;
 import com.lqb.spring.v2.beans.config.BeanPostProcessor;
 import com.lqb.spring.v2.beans.support.BeanDefinitionReader;
-import com.lqb.spring.v2.core.factory.BeanFactory;
+import com.lqb.spring.v2.context.ApplicationContext;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DefaultApplicationContext implements BeanFactory {
+public class DefaultApplicationContext implements ApplicationContext {
 
     protected final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
 
@@ -34,12 +34,12 @@ public class DefaultApplicationContext implements BeanFactory {
      */
     private Map<String, BeanWrapper> factoryBeanInstanceCache = new ConcurrentHashMap<>();
 
-    private String configLocations;
+    private String configLocation;
 
     private BeanDefinitionReader reader;
 
-    public DefaultApplicationContext(String configLocations) {
-        this.configLocations = configLocations;
+    public DefaultApplicationContext(String configLocation) {
+        this.configLocation = configLocation;
         try {
             refresh();
         } catch (Exception e) {
@@ -50,7 +50,7 @@ public class DefaultApplicationContext implements BeanFactory {
     public void refresh() throws Exception {
 
         //1、定位，定位配置文件
-        reader = new BeanDefinitionReader(this.configLocations);
+        reader = new BeanDefinitionReader(this.configLocation);
 
         //2、加载配置文件，扫描相关的类，把它们封装成BeanDefinition
         List<BeanDefinition> beanDefinitions = reader.loadBeanDefinitions();
