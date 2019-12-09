@@ -1,8 +1,6 @@
 package com.lqb.spring.v2.context.support;
 
 import com.lqb.spring.v2.annotation.Autowired;
-import com.lqb.spring.v2.annotation.Controller;
-import com.lqb.spring.v2.annotation.Service;
 import com.lqb.spring.v2.aop.AopProxy;
 import com.lqb.spring.v2.aop.CglibAopProxy;
 import com.lqb.spring.v2.aop.JdkDynamicAopProxy;
@@ -22,16 +20,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultApplicationContext implements ApplicationContext {
 
-    protected final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
+    private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
 
-    /**
-     * 单例的IOC容器缓存
-     */
-    private Map<String, Object> factoryBeanObjectCache = new ConcurrentHashMap<>();
-
-    /**
-     * 通用的IOC容器
-     */
+    /**保存了真正实例化的对象*/
     private Map<String, BeanWrapper> factoryBeanInstanceCache = new ConcurrentHashMap<>();
 
     private String configLocation;
@@ -87,9 +78,8 @@ public class DefaultApplicationContext implements ApplicationContext {
 
     @Override
     public Object getBean(String beanName) throws Exception {
+        //如果是单例，那么在上一次调用getBean获取该bean时已经初始化过了，拿到不为空的实例直接返回即可
         Object instance = getSingleton(beanName);
-
-        //如果是单例且存在则直接返回
         if (instance != null) {
             return instance;
         }
@@ -100,20 +90,22 @@ public class DefaultApplicationContext implements ApplicationContext {
 
         postProcessor.postProcessBeforeInitialization(instance, beanName);
 
-        //先初始化Bean
+        //调用反射初始化Bean
         instance = instantiateBean(beanName, beanDefinition);
 
         //把这个对象封装到BeanWrapper中
         BeanWrapper beanWrapper = new BeanWrapper(instance);
 
         //拿到BeanWraoper之后，把BeanWrapper保存到IOC容器中去
+        //注册一个类名（首字母小写，如helloService）
         this.factoryBeanInstanceCache.put(beanName, beanWrapper);
+        //注册一个全类名（如com.lqb.HelloService）
+        this.factoryBeanInstanceCache.put(beanDefinition.getBeanClassName(), beanWrapper);
 
         postProcessor.postProcessAfterInitialization(instance, beanName);
 
         //注入
         populateBean(beanName, new BeanDefinition(), beanWrapper);
-
 
         return this.factoryBeanInstanceCache.get(beanName).getWrappedInstance();
     }
@@ -123,36 +115,34 @@ public class DefaultApplicationContext implements ApplicationContext {
         return beanWrapper == null ? null : beanWrapper.getWrappedInstance();
     }
 
-    private void populateBean(String beanName, BeanDefinition beanDefinition, BeanWrapper gpBeanWrapper) {
-        Object instance = gpBeanWrapper.getWrappedInstance();
+    private void populateBean(String beanName, BeanDefinition beanDefinition, BeanWrapper beanWrapper) {
 
-        Class<?> clazz = gpBeanWrapper.getWrappedClass();
-        //判断只有加了注解的类，才执行依赖注入
-        if (!(clazz.isAnnotationPresent(Controller.class) || clazz.isAnnotationPresent(Service.class))) {
-            return;
-        }
+        Class<?> clazz = beanWrapper.getWrappedClass();
 
-        //获得所有的fields
+        //获得所有的成员变量
         Field[] fields = clazz.getDeclaredFields();
         for (Field field : fields) {
+            //如果没有被Autowired注解的成员变量则直接跳过
             if (!field.isAnnotationPresent(Autowired.class)) {
                 continue;
             }
 
             Autowired autowired = field.getAnnotation(Autowired.class);
+            //拿到需要注入的类名
             String autowiredBeanName = autowired.value().trim();
             if ("".equals(autowiredBeanName)) {
                 autowiredBeanName = field.getType().getName();
             }
 
-            //强制访问
+            //强制访问该成员变量
             field.setAccessible(true);
 
             try {
                 if (this.factoryBeanInstanceCache.get(autowiredBeanName) == null) {
                     continue;
                 }
-                field.set(instance, this.factoryBeanInstanceCache.get(autowiredBeanName).getWrappedInstance());
+                //将容器中的实例注入到成员变量中
+                field.set(beanWrapper.getWrappedInstance(), this.factoryBeanInstanceCache.get(autowiredBeanName).getWrappedInstance());
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             }
@@ -166,24 +156,18 @@ public class DefaultApplicationContext implements ApplicationContext {
         //2、反射实例化，得到一个对象
         Object instance = null;
         try {
-            if (this.factoryBeanObjectCache.containsKey(className)) {
-                instance = this.factoryBeanObjectCache.get(className);
-            } else {
-                Class<?> clazz = Class.forName(className);
-                instance = clazz.newInstance();
+            Class<?> clazz = Class.forName(className);
+            instance = clazz.newInstance();
 
-                AdvisedSupport config = instantionAopConfig(beanDefinition);
-                config.setTargetClass(clazz);
-                config.setTarget(instance);
+            AdvisedSupport config = instantionAopConfig(beanDefinition);
+            config.setTargetClass(clazz);
+            config.setTarget(instance);
 
-                //符合PointCut的规则的话，将创建代理对象
-                if(config.pointCutMatch()) {
-                    instance = createProxy(config).getProxy();
-                }
-
-                this.factoryBeanObjectCache.put(className, instance);
-                this.factoryBeanObjectCache.put(beanDefinition.getFactoryBeanName(), instance);
+            //符合PointCut的规则的话，将创建代理对象
+            if(config.pointCutMatch()) {
+                instance = createProxy(config).getProxy();
             }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
