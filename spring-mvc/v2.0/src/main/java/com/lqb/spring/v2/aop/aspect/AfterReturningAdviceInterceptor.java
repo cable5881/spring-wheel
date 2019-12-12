@@ -5,10 +5,7 @@ import com.lqb.spring.v2.aop.intercept.MethodInvocation;
 
 import java.lang.reflect.Method;
 
-/**
- * Created by Tom on 2019/4/15.
- */
-public class AfterReturningAdviceInterceptor extends AbstractAspectAdvice implements Advice, MethodInterceptor {
+public class AfterReturningAdviceInterceptor extends AbstractAspectAdvice implements MethodInterceptor {
 
     private JoinPoint joinPoint;
 
@@ -18,7 +15,9 @@ public class AfterReturningAdviceInterceptor extends AbstractAspectAdvice implem
 
     @Override
     public Object invoke(MethodInvocation mi) throws Throwable {
+        //先调用下一个拦截器
         Object retVal = mi.proceed();
+        //再调用后置通知
         this.joinPoint = mi;
         this.afterReturning(retVal, mi.getMethod(), mi.getArguments(), mi.getThis());
         return retVal;

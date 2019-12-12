@@ -2,13 +2,13 @@ package com.lqb.spring.v2.aop.aspect;
 
 import java.lang.reflect.Method;
 
-/**
- * Created by Tom on 2019/4/15.
- */
+
 public abstract class AbstractAspectAdvice implements Advice {
 
+    /**通知方法*/
     private Method aspectMethod;
 
+    /**切面类*/
     private Object aspectTarget;
 
     public AbstractAspectAdvice(Method aspectMethod, Object aspectTarget) {
@@ -16,6 +16,9 @@ public abstract class AbstractAspectAdvice implements Advice {
         this.aspectTarget = aspectTarget;
     }
 
+    /**
+     * 调用通知方法
+     */
     public Object invokeAdviceMethod(JoinPoint joinPoint, Object returnValue, Throwable tx) throws Throwable {
         Class<?>[] paramTypes = this.aspectMethod.getParameterTypes();
         if (null == paramTypes || paramTypes.length == 0) {

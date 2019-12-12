@@ -7,27 +7,38 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Created by Tom on 2019/4/14.
- */
 public class MethodInvocation implements JoinPoint {
 
-
+    /**代理对象*/
     private Object proxy;
-    private Method method;
-    private Object target;
-    private Object [] arguments;
-    private List<Object> interceptorsAndDynamicMethodMatchers;
+
+    /**被代理对象的class*/
     private Class<?> targetClass;
 
+    /**被代理的对象*/
+    private Object target;
+
+    /**被代理的方法*/
+    private Method method;
+
+    /**被代理的方法的入参*/
+    private Object [] arguments;
+
+    /**拦截器链*/
+    private List<Object> interceptorsAndDynamicMethodMatchers;
+
+    /**用户参数*/
     private Map<String, Object> userAttributes;
 
-    //定义一个索引，从-1开始来记录当前拦截器执行的位置
+    /**记录当前拦截器执行的位置*/
     private int currentInterceptorIndex = -1;
 
-    public MethodInvocation(
-            Object proxy, Object target, Method method, Object[] arguments,
-            Class<?> targetClass, List<Object> interceptorsAndDynamicMethodMatchers) {
+    public MethodInvocation(Object proxy,
+                            Object target,
+                            Method method,
+                            Object[] arguments,
+                            Class<?> targetClass,
+                            List<Object> interceptorsAndDynamicMethodMatchers) {
 
         this.proxy = proxy;
         this.target = target;
@@ -37,21 +48,24 @@ public class MethodInvocation implements JoinPoint {
         this.interceptorsAndDynamicMethodMatchers = interceptorsAndDynamicMethodMatchers;
     }
 
+    /**
+     * 调度执行拦截器链
+     */
     public Object proceed() throws Throwable {
-        //如果Interceptor执行完了，则执行joinPoint
+        //拦截器执行完了，最后真正执行被代理的方法
         if (this.currentInterceptorIndex == this.interceptorsAndDynamicMethodMatchers.size() - 1) {
             return this.method.invoke(this.target,this.arguments);
         }
 
+        //获取一个拦截器
         Object interceptorOrInterceptionAdvice =
                 this.interceptorsAndDynamicMethodMatchers.get(++this.currentInterceptorIndex);
-        //如果要动态匹配joinPoint
         if (interceptorOrInterceptionAdvice instanceof MethodInterceptor) {
-            MethodInterceptor mi =
-                    (MethodInterceptor) interceptorOrInterceptionAdvice;
+            MethodInterceptor mi = (MethodInterceptor) interceptorOrInterceptionAdvice;
+            //执行通知方法
             return mi.invoke(this);
         } else {
-            //动态匹配失败时,略过当前Intercetpor,调用下一个Interceptor
+            //跳过，调用下一个拦截器
             return proceed();
         }
     }
@@ -75,7 +89,7 @@ public class MethodInvocation implements JoinPoint {
     public void setUserAttribute(String key, Object value) {
         if (value != null) {
             if (this.userAttributes == null) {
-                this.userAttributes = new HashMap<String,Object>();
+                this.userAttributes = new HashMap<>();
             }
             this.userAttributes.put(key, value);
         }
@@ -85,7 +99,6 @@ public class MethodInvocation implements JoinPoint {
             }
         }
     }
-
 
     @Override
     public Object getUserAttribute(String key) {

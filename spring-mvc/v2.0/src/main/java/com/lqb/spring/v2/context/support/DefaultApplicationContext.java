@@ -177,6 +177,7 @@ public class DefaultApplicationContext implements ApplicationContext {
 
     private AopProxy createProxy(AdvisedSupport config) {
         Class targetClass = config.getTargetClass();
+        //如果接口数量 > 0则使用JDK原生动态代理
         if(targetClass.getInterfaces().length > 0){
             return new JdkDynamicAopProxy(config);
         }

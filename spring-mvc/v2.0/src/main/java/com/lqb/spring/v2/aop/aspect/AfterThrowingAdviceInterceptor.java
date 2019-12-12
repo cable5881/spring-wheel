@@ -8,7 +8,7 @@ import java.lang.reflect.Method;
 /**
  * Created by Tom on 2019/4/15.
  */
-public class AfterThrowingAdviceInterceptor extends AbstractAspectAdvice implements Advice, MethodInterceptor {
+public class AfterThrowingAdviceInterceptor extends AbstractAspectAdvice implements MethodInterceptor {
 
 
     private String throwingName;
@@ -20,8 +20,10 @@ public class AfterThrowingAdviceInterceptor extends AbstractAspectAdvice impleme
     @Override
     public Object invoke(MethodInvocation mi) throws Throwable {
         try {
+            //直接调用下一个拦截器，如果不出现异常就不调用异常通知
             return mi.proceed();
         } catch (Throwable e) {
+            //异常捕捉中调用通知方法
             invokeAdviceMethod(mi, null, e.getCause());
             throw e;
         }

@@ -13,20 +13,22 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Created by Tom on 2019/4/14.
- */
 public class AdvisedSupport {
 
+    /**被代理的类class*/
     private Class<?> targetClass;
 
+    /**被代理的对象实力*/
     private Object target;
 
+    /**被代理的方法对应的拦截器集合*/
+    private Map<Method, List<Object>> methodCache;
+
+    /**AOP外部配置*/
     private AopConfig config;
 
+    /**切点正则表达式*/
     private Pattern pointCutClassPattern;
-
-    private transient Map<Method, List<Object>> methodCache;
 
     public AdvisedSupport(AopConfig config) {
         this.config = config;
@@ -40,14 +42,14 @@ public class AdvisedSupport {
         return this.target;
     }
 
+    /**
+     * 获取拦截器
+     */
     public List<Object> getInterceptorsAndDynamicInterceptionAdvice(Method method, Class<?> targetClass) throws Exception {
         List<Object> cached = methodCache.get(method);
         if (cached == null) {
             Method m = targetClass.getMethod(method.getName(), method.getParameterTypes());
-
             cached = methodCache.get(m);
-
-            //底层逻辑，对代理方法进行一个兼容处理
             this.methodCache.put(m, cached);
         }
 
@@ -59,29 +61,32 @@ public class AdvisedSupport {
         parse();
     }
 
+    /**
+     * 解析AOP配置，创建拦截器
+     */
     private void parse() {
+        //编译切点表达式为正则
         String pointCut = config.getPointCut()
                 .replaceAll("\\.", "\\\\.")
                 .replaceAll("\\\\.\\*", ".*")
                 .replaceAll("\\(", "\\\\(")
                 .replaceAll("\\)", "\\\\)");
-        //pointCut=public .* com.gupaoedu.vip.spring.demo.service..*Service..*(.*)
-        //玩正则
+        //pointCut=public .* com.lqb.demo.service..*Service..*(.*)
         String pointCutForClassRegex = pointCut.substring(0, pointCut.lastIndexOf("\\(") - 4);
         pointCutClassPattern = Pattern.compile("class " + pointCutForClassRegex.substring(
                 pointCutForClassRegex.lastIndexOf(" ") + 1));
 
         try {
-
-            methodCache = new HashMap<>();
-            Pattern pattern = Pattern.compile(pointCut);
-
-            Class aspectClass = Class.forName(this.config.getAspectClass());
+            //保存切面的所有通知方法
             Map<String, Method> aspectMethods = new HashMap<>();
+            Class aspectClass = Class.forName(this.config.getAspectClass());
             for (Method m : aspectClass.getMethods()) {
                 aspectMethods.put(m.getName(), m);
             }
 
+            //遍历被代理类的所有方法，为符合切点表达式的方法创建拦截器
+            methodCache = new HashMap<>();
+            Pattern pattern = Pattern.compile(pointCut);
             for (Method m : this.targetClass.getMethods()) {
                 String methodString = m.toString();
                 //为了能正确匹配这里去除函数签名尾部的throws xxxException
@@ -93,8 +98,8 @@ public class AdvisedSupport {
                 if (matcher.matches()) {
                     //执行器链
                     List<Object> advices = new LinkedList<>();
-                    //把每一个方法包装成 MethodIterceptor
-                    //before
+
+                    //创建前置拦截器
                     if (!(null == config.getAspectBefore() || "".equals(config.getAspectBefore()))) {
                         //创建一个Advivce
                         MethodBeforeAdviceInterceptor beforeAdvice = new MethodBeforeAdviceInterceptor(
@@ -103,18 +108,16 @@ public class AdvisedSupport {
                         );
                         advices.add(beforeAdvice);
                     }
-                    //after
+                    //创建后置拦截器
                     if (!(null == config.getAspectAfter() || "".equals(config.getAspectAfter()))) {
-                        //创建一个Advivce
                         AfterReturningAdviceInterceptor returningAdvice = new AfterReturningAdviceInterceptor(
                                 aspectMethods.get(config.getAspectAfter()),
                                 aspectClass.newInstance()
                         );
                         advices.add(returningAdvice);
                     }
-                    //afterThrowing
+                    //创建异常拦截器
                     if (!(null == config.getAspectAfterThrow() || "".equals(config.getAspectAfterThrow()))) {
-                        //创建一个Advivce
                         AfterThrowingAdviceInterceptor throwingAdvice = new AfterThrowingAdviceInterceptor(
                                 aspectMethods.get(config.getAspectAfterThrow()),
                                 aspectClass.newInstance()
@@ -122,9 +125,10 @@ public class AdvisedSupport {
                         throwingAdvice.setThrowName(config.getAspectAfterThrowingName());
                         advices.add(throwingAdvice);
                     }
+
+                    //保存被代理方法和执行器链的对应关系
                     methodCache.put(m, advices);
                 }
-
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -136,6 +140,9 @@ public class AdvisedSupport {
         this.target = target;
     }
 
+    /**
+     * 判断一个类是否需要被代理
+     */
     public boolean pointCutMatch() {
         return pointCutClassPattern.matcher(this.targetClass.toString()).matches();
     }

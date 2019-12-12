@@ -14,41 +14,43 @@ import java.util.regex.Pattern;
  * @date 2019/12/3 16:56
  **/
 public class View {
-    public final String DEFULAT_CONTENT_TYPE = "text/html;charset=utf-8";
 
     private File viewFile;
 
-    private Pattern pattern = Pattern.compile("￥\\{[^\\}]+\\}", Pattern.CASE_INSENSITIVE);
+    private Pattern pattern = Pattern.compile("#\\{[^\\}]+\\}", Pattern.CASE_INSENSITIVE);
 
     public View(File viewFile) {
         this.viewFile = viewFile;
     }
 
     public void render(Map<String, ?> model,
-                       HttpServletRequest request, HttpServletResponse response) throws Exception {
-        StringBuffer sb = new StringBuffer();
+                       HttpServletRequest request,
+                       HttpServletResponse response) throws Exception {
 
+        StringBuilder sb = new StringBuilder();
         RandomAccessFile ra = new RandomAccessFile(this.viewFile, "r");
-
         String line = null;
+
         while (null != (line = ra.readLine())) {
             line = new String(line.getBytes("ISO-8859-1"), "utf-8");
             Matcher matcher = this.pattern.matcher(line);
+            //找到下一个占位符
             while (matcher.find()) {
                 String paramName = matcher.group();
-                paramName = paramName.replaceAll("￥\\{|\\}", "");
+                paramName = paramName.replaceAll("#\\{|\\}", "");
                 Object paramValue = model.get(paramName);
                 if (null == paramValue) {
                     continue;
                 }
+                //替换占位符为实际值
                 line = matcher.replaceFirst(makeStringForRegExp(paramValue.toString()));
+                //接着匹配下一个占位符
                 matcher = pattern.matcher(line);
             }
             sb.append(line);
         }
 
         response.setCharacterEncoding("utf-8");
-//        response.setContentType(DEFULAT_CONTENT_TYPE);
         response.getWriter().write(sb.toString());
     }
 

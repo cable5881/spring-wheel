@@ -68,7 +68,7 @@ public class HandlerAdapter {
             }
 
             int index = paramIndexMapping.get(parm.getKey());
-            paramValues[index] = caseStringValue(value, paramsTypes[index]);
+            paramValues[index] = parseStringValue(value, paramsTypes[index]);
         }
 
         if (paramIndexMapping.containsKey(HttpServletRequest.class.getName())) {
@@ -99,7 +99,10 @@ public class HandlerAdapter {
         return null;
     }
 
-    private Object caseStringValue(String value, Class<?> paramsType) {
+    /**
+     * request中接收的参数都是string类型的，需要转换为controller中实际的参数类型
+     */
+    private Object parseStringValue(String value, Class<?> paramsType) {
         if (String.class == paramsType) {
             return value;
         }

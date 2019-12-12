@@ -79,19 +79,18 @@ public class DispatcherServlet extends HttpServlet {
     }
 
     private void processDispatchResult(HttpServletRequest req, HttpServletResponse resp, ModelAndView mv) throws Exception {
-        //把给我的ModleAndView变成一个HTML、OuputStream、json、freemark、veolcity
-        //ContextType
         if (null == mv) {
             return;
         }
 
-        //如果ModelAndView不为null，怎么办？
         if (this.viewResolvers.isEmpty()) {
             return;
         }
 
         for (ViewResolver viewResolver : this.viewResolvers) {
+            //根据模板名拿到View
             View view = viewResolver.resolveViewName(mv.getViewName(), null);
+            //开始渲染
             view.render(mv.getModel(), req, resp);
             return;
         }
@@ -213,7 +212,6 @@ public class DispatcherServlet extends HttpServlet {
 
                     //映射URL
                     RequestMapping requestMapping = method.getAnnotation(RequestMapping.class);
-
                     String regex = ("/" + baseUrl + "/" + requestMapping.value().replaceAll("\\*", ".*")).replaceAll("/+", "/");
                     Pattern pattern = Pattern.compile(regex);
 
